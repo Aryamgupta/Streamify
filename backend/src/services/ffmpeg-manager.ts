@@ -82,7 +82,7 @@ export class FFmpegManager {
   private async ensureAllDirectories() {
     try {
       const db = getDb();
-      const cameras = await db.all<{ id: number }>('SELECT id FROM cameras WHERE enabled = 1');
+      const cameras = await db.all<{ id: number }[]>('SELECT id FROM cameras WHERE enabled = 1');
       const storagePath = await this.getStoragePath();
 
       for (const camera of cameras) {
@@ -382,7 +382,7 @@ export class FFmpegManager {
    */
   public async startAllEnabledCameras() {
     const db = getDb();
-    const cameras = await db.all<{ id: number }>('SELECT id FROM cameras WHERE enabled = 1');
+    const cameras = await db.all<{ id: number }[]>('SELECT id FROM cameras WHERE enabled = 1');
     console.log(`Starting all enabled cameras (${cameras.length})...`);
     for (const camera of cameras) {
       await this.startCamera(camera.id);
@@ -428,7 +428,7 @@ export class FFmpegManager {
       if (!fs.existsSync(storagePath)) return;
 
       const db = getDb();
-      const cameras = await db.all<{ id: number }>('SELECT id FROM cameras');
+      const cameras = await db.all<{ id: number }[]>('SELECT id FROM cameras');
 
       for (const camera of cameras) {
         const camDir = path.join(storagePath, `cam-${camera.id}`);

@@ -99,7 +99,7 @@ export class StorageManager {
       console.log(`Running retention cleanup. Deleting recordings older than ${retentionDays} days (before ${cutoffStr})...`);
 
       // Get expired recordings
-      const expiredRecordings = await db.all<{ id: number; file_path: string }>(
+      const expiredRecordings = await db.all<{ id: number; file_path: string }[]>(
         'SELECT id, file_path FROM recordings WHERE start_time < ?',
         cutoffStr
       );
@@ -147,6 +147,16 @@ export class StorageManager {
       const storagePath = await this.getStoragePath();
       if (!fs.existsSync(storagePath)) return;
 
+      const formatDate = (d: Date) => {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+      };
+
+      const today = formatDate(new Date());
+      const tomorrow = formatDate(new Date(Date.now() + 24 * 60 * 60 * 1000));
+
       const cameras = fs.readdirSync(storagePath);
       for (const camDir of cameras) {
         const camPath = path.join(storagePath, camDir);
@@ -154,6 +164,10 @@ export class StorageManager {
 
         const dateFolders = fs.readdirSync(camPath);
         for (const dateFolder of dateFolders) {
+          if (dateFolder === today || dateFolder === tomorrow) {
+            continue; // Keep directories for active and upcoming recording sessions
+          }
+
           const dateFolderPath = path.join(camPath, dateFolder);
           if (!fs.statSync(dateFolderPath).isDirectory()) continue;
 

@@ -41,7 +41,7 @@ router.post('/test', async (req: AuthenticatedRequest, res: Response) => {
 router.get('/', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const db = getDb();
-    const cameras = await db.all<{ id: number; name: string; rtsp_url: string; enabled: number; created_at: string }>(
+    const cameras = await db.all<{ id: number; name: string; rtsp_url: string; enabled: number; created_at: string }[]>(
       'SELECT * FROM cameras ORDER BY created_at DESC'
     );
 
@@ -187,7 +187,7 @@ router.delete('/:id', async (req: AuthenticatedRequest, res: Response) => {
     await ffmpegManager.stopCamera(cameraId);
 
     // 2. Delete from DB (recordings will cascade-delete if schema set up, let's also delete files)
-    const recordings = await db.all<{ file_path: string }>('SELECT file_path FROM recordings WHERE camera_id = ?', cameraId);
+    const recordings = await db.all<{ file_path: string }[]>('SELECT file_path FROM recordings WHERE camera_id = ?', cameraId);
     for (const rec of recordings) {
       try {
         if (require('fs').existsSync(rec.file_path)) {

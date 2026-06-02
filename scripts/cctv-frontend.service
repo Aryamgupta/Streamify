@@ -1,0 +1,14 @@
+[Unit]
+Description=CCTV NVR Frontend Dashboard
+After=network.target cctv-backend.service
+
+[Service]
+Type=simple
+User=aryam
+WorkingDirectory=/home/aryam/Documents/cctv-analysis/frontend
+ExecStart=/usr/bin/npm run start
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

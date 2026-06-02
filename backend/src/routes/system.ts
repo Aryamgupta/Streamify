@@ -28,7 +28,9 @@ router.get('/status', async (req: AuthenticatedRequest, res: Response) => {
     const memoryUsagePercent = (usedMem / totalMem) * 100;
 
     // Get count of cameras
-    const cameras = await db.all<{ id: number; enabled: number }>('SELECT id, enabled FROM cameras');
+    const cameras = await db.all<{ id: number; enabled: number }[]>(
+      'SELECT id, enabled FROM cameras'
+    );
     const totalCameras = cameras.length;
     const enabledCameras = cameras.filter((c) => c.enabled === 1).length;
 
@@ -82,7 +84,7 @@ router.get('/storage', async (req: AuthenticatedRequest, res: Response) => {
 router.get('/settings', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const db = getDb();
-    const settingsRows = await db.all<{ key: string; value: string }>('SELECT * FROM settings');
+    const settingsRows = await db.all<{ key: string; value: string }[]>('SELECT * FROM settings');
     
     const settings: Record<string, string> = {};
     for (const row of settingsRows) {
@@ -118,7 +120,7 @@ router.put('/settings', requireRole(['admin']), async (req: AuthenticatedRequest
     const db = getDb();
 
     // Fetch existing settings to see if they changed
-    const currentSettings = await db.all<{ key: string; value: string }>('SELECT * FROM settings');
+    const currentSettings = await db.all<{ key: string; value: string }[]>('SELECT * FROM settings');
     const settingsMap = new Map(currentSettings.map((row) => [row.key, row.value]));
 
     const pathChanged = settingsMap.get('storage_path') !== storage_path;

@@ -1,0 +1,15 @@
+[Unit]
+Description=CCTV NVR Recording Daemon
+After=network.target cctv-backend.service
+
+[Service]
+Type=simple
+User=aryam
+WorkingDirectory=/home/aryam/Documents/cctv-analysis/backend
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node dist/recorder.js
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

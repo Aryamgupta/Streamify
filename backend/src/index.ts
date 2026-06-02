@@ -37,19 +37,10 @@ async function bootstrap() {
     await initDatabase(CONFIG.DB_PATH);
     console.log(`Database initialized successfully at ${CONFIG.DB_PATH}`);
 
-    // Sync any recording files on disk with the DB indexer
-    await ffmpegManager.syncRecordingsFromDisk();
-
-    // Start all enabled cameras in the background
-    await ffmpegManager.startAllEnabledCameras();
-
-    // Run initial retention check
-    await storageManager.runCleanup();
-
     // Start Express server
     const server = app.listen(CONFIG.PORT, '0.0.0.0', () => {
       console.log(`=========================================`);
-      console.log(` CCTV NVR Backend Running on port ${CONFIG.PORT} `);
+      console.log(` CCTV NVR API Backend Running on port ${CONFIG.PORT} `);
       console.log(` Live Stream Directory: ${CONFIG.LIVE_PATH} `);
       console.log(` Mode: ${process.env.NODE_ENV || 'development'} `);
       console.log(`=========================================`);
@@ -61,15 +52,6 @@ async function bootstrap() {
       server.close(() => {
         console.log('HTTP server closed.');
       });
-
-      storageManager.stop();
-      console.log('Storage manager loop stopped.');
-
-      console.log('Stopping active FFmpeg processes...');
-      await ffmpegManager.stopAll();
-      console.log('All FFmpeg processes terminated.');
-
-      console.log('Graceful shutdown completed.');
       process.exit(0);
     };
 
