@@ -45,16 +45,19 @@ TEMP_RECORDER="/tmp/cctv-recorder.service"
 TEMP_FRONTEND="/tmp/cctv-frontend.service"
 
 # Create customized services replacing placeholders
+# Developer Note: These replacements map the template placeholder username ('aryam') and
+# placeholder repository path ('/home/aryam/Streamify') to the dynamically detected 
+# system user ($REAL_USER) and absolute workspace folders ($BACKEND_DIR, $FRONTEND_DIR).
 sed -e "s|User=aryam|User=$REAL_USER|g" \
-    -e "s|WorkingDirectory=/home/aryam/Documents/cctv-analysis/backend|WorkingDirectory=$BACKEND_DIR|g" \
+    -e "s|WorkingDirectory=/home/aryam/Streamify/backend|WorkingDirectory=$BACKEND_DIR|g" \
     "$WORKSPACE_DIR/scripts/cctv-backend.service" > "$TEMP_BACKEND"
 
 sed -e "s|User=aryam|User=$REAL_USER|g" \
-    -e "s|WorkingDirectory=/home/aryam/Documents/cctv-analysis/backend|WorkingDirectory=$BACKEND_DIR|g" \
+    -e "s|WorkingDirectory=/home/aryam/Streamify/backend|WorkingDirectory=$BACKEND_DIR|g" \
     "$WORKSPACE_DIR/scripts/cctv-recorder.service" > "$TEMP_RECORDER"
 
 sed -e "s|User=aryam|User=$REAL_USER|g" \
-    -e "s|WorkingDirectory=/home/aryam/Documents/cctv-analysis/frontend|WorkingDirectory=$FRONTEND_DIR|g" \
+    -e "s|WorkingDirectory=/home/aryam/Streamify/frontend|WorkingDirectory=$FRONTEND_DIR|g" \
     "$WORKSPACE_DIR/scripts/cctv-frontend.service" > "$TEMP_FRONTEND"
 
 # Copy to systemd

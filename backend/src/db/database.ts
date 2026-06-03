@@ -87,6 +87,13 @@ export async function initDatabase(dbPath: string): Promise<Database> {
     console.log('Seeded default system settings');
   }
 
+  // Docker compatibility path override
+  const isDocker = fs.existsSync('/.dockerenv') || process.env.DOCKER_MODE === 'true';
+  if (isDocker) {
+    await db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('storage_path', '/app/recordings')");
+    console.log('Docker environment detected. Ensured storage_path points to /app/recordings.');
+  }
+
   return db;
 }
 

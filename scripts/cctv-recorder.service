@@ -1,3 +1,9 @@
+# NOTE FOR USERS/DEVELOPERS:
+# 'User=aryam' and '/home/aryam/Streamify/backend' are template placeholders.
+# The 'install-services.sh' and 'setup-pi.sh' scripts will automatically detect
+# your system username and repository path, replacing these values on installation.
+# If manual setup is preferred, edit 'User' and 'WorkingDirectory' below.
+
 [Unit]
 Description=CCTV NVR Recording Daemon
 After=network.target cctv-backend.service

@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cctv-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - cctv-data:/app/data
+      - cctv-recordings:/app/recordings
+      # Default to Docker named volume for HLS live streams
+      - cctv-live:/app/live
+      # OPTIMIZATION FOR LINUX / RASPBERRY PI:
+      # To run live HLS streams in RAM (highly recommended to prevent SD card wear),
+      # comment the 'cctv-live:/app/live' line above and uncomment the line below:
+      # - /dev/shm/cctv-live:/app/live
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - DB_PATH=/app/data/cctv.db
+      - LIVE_PATH=/app/live
+      - MOCK_MODE=false
+      - DOCKER_MODE=true
+      - JWT_SECRET=cctv-nvr-super-secret-key-change-this-in-production
+
+  recorder:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cctv-recorder
+    restart: unless-stopped
+    command: ["node", "dist/recorder.js"]
+    volumes:
+      - cctv-data:/app/data
+      - cctv-recordings:/app/recordings
+      - cctv-live:/app/live
+      # OPTIMIZATION FOR LINUX / RASPBERRY PI:
+      # Match the backend mapping to share the live RAM disk segments:
+      # - /dev/shm/cctv-live:/app/live
+      #
+      # ACCESS LOCAL USB CAMERAS (V4L2) IF APPLICABLE:
+      # - /dev:/dev
+    environment:
+      - NODE_ENV=production
+      - DB_PATH=/app/data/cctv.db
+      - LIVE_PATH=/app/live
+      - DOCKER_MODE=true
+    depends_on:
+      - backend
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cctv-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    depends_on:
+      - backend
+
+volumes:
+  cctv-data:
+  cctv-recordings:
+  cctv-live:

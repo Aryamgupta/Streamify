@@ -3,7 +3,7 @@
 
 set -e
 
-WORKSPACE_DIR="/home/aryam/Documents/cctv-analysis"
+WORKSPACE_DIR=$(cd "$(dirname "$0")/.." && pwd)
 MOCK_DIR="$WORKSPACE_DIR/mock-media"
 
 echo "Creating mock media directory..."

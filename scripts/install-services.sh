@@ -36,6 +36,9 @@ TEMP_RECORDER="/tmp/cctv-recorder.service"
 TEMP_FRONTEND="/tmp/cctv-frontend.service"
 
 # Create customized service files from templates
+# Developer Note: These replacements map the template placeholder username ('aryam') and
+# placeholder repository path ('/home/aryam/Streamify') to the dynamically detected 
+# system user ($REAL_USER) and absolute workspace folders ($BACKEND_DIR, $FRONTEND_DIR).
 echo "Customizing systemd service configs..."
 sed -e "s|User=aryam|User=$REAL_USER|g" \
     -e "s|WorkingDirectory=/home/aryam/Streamify/backend|WorkingDirectory=$BACKEND_DIR|g" \
