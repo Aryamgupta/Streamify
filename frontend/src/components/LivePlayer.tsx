@@ -34,10 +34,13 @@ export default function LivePlayer({ streamUrl, cameraName, isOnline }: LivePlay
     // Hls.js support (preferred as it handles header injection for chunks)
     if (Hls.isSupported()) {
       const hls = new Hls({
-        maxBufferLength: 10,
-        maxMaxBufferLength: 20,
+        maxBufferLength: 2,
+        maxMaxBufferLength: 4,
+        liveSyncDurationCount: 1,
+        liveMaxLatencyDurationCount: 2,
         enableWorker: true,
         lowLatencyMode: true,
+        backBufferLength: 0,
         xhrSetup: (xhr) => {
           if (token) {
             xhr.setRequestHeader('Authorization', `Bearer ${token}`);

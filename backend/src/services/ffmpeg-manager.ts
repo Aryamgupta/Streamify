@@ -5,8 +5,7 @@ import { getDb } from '../db/database';
 import { CONFIG } from '../config';
 
 interface CameraProcessState {
-  recorder: ChildProcess | null;
-  live: ChildProcess | null;
+  process: ChildProcess | null;
   currentRecordingFile: string | null;
   restartTimer: NodeJS.Timeout | null;
   retries: number;
@@ -140,8 +139,7 @@ export class FFmpegManager {
     let state = this.processes.get(cameraId);
     if (!state) {
       state = {
-        recorder: null,
-        live: null,
+        process: null,
         currentRecordingFile: null,
         restartTimer: null,
         retries: 0
@@ -151,50 +149,66 @@ export class FFmpegManager {
 
     const isRtsp = camera.rtsp_url.startsWith('rtsp://') || camera.rtsp_url.startsWith('rtmp://');
 
-    // 1. Spawning Recording Process
+    // Spawning a single FFmpeg process for both Recording and Live HLS
     // Format path using strftime: cam-ID/YYYY-MM-DD/HH-MM.mp4
     const outPattern = path.join(storagePath, `cam-${cameraId}`, '%Y-%m-%d', '%H-%M.mp4');
     
-    const recordArgs = isRtsp
-      ? [
-          '-rtsp_transport', 'tcp',
-          '-i', camera.rtsp_url,
-          '-c', 'copy',
-          '-f', 'segment',
-          '-segment_time', String(segmentDuration),
-          '-segment_at_time', '1',
-          '-reset_timestamps', '1',
-          '-strftime', '1',
-          '-segment_format_options', 'movflags=+faststart',
-          outPattern
-        ]
-      : [
-          '-re',
-          '-stream_loop', '-1',
-          '-i', camera.rtsp_url,
-          '-c', 'copy',
-          '-f', 'segment',
-          '-segment_time', String(segmentDuration),
-          '-reset_timestamps', '1',
-          '-strftime', '1',
-          '-segment_format_options', 'movflags=+faststart',
-          outPattern
-        ];
+    const liveDir = path.join(CONFIG.LIVE_PATH, `cam-${cameraId}`);
+    const livePlaylist = path.join(liveDir, 'index.m3u8');
+    const liveSegmentFilename = path.join(liveDir, 'seq_%d.ts');
 
-    console.log(`Spawning recorder for cam ${cameraId}: ffmpeg ${recordArgs.join(' ')}`);
-    const recorder = spawn('ffmpeg', recordArgs);
-    state.recorder = recorder;
+    const inputArgs = isRtsp
+      ? ['-rtsp_transport', 'tcp', '-i', camera.rtsp_url]
+      : ['-re', '-stream_loop', '-1', '-i', camera.rtsp_url];
 
-    // Monitor recorder logs to index complete segments
+    const args = [
+      ...inputArgs,
+      // Global/Input optimizations for low latency and stability
+      '-fflags', 'nobuffer',
+      '-flags', 'low_delay',
+      
+      // Output 1: Segmented Recording
+      '-c:v', 'copy',
+      '-c:a', 'aac',
+      '-f', 'segment',
+      '-segment_time', String(segmentDuration),
+      '-reset_timestamps', '1',
+      '-strftime', '1',
+      '-segment_format_options', 'movflags=+faststart',
+      outPattern,
+
+      // Output 2: Live HLS Stream
+      '-c:v', 'copy',
+      '-c:a', 'aac',
+      '-f', 'hls',
+      '-hls_time', '1',
+      '-hls_list_size', '2',
+      '-hls_flags', 'delete_segments+omit_endlist',
+      '-hls_segment_filename', liveSegmentFilename,
+      livePlaylist
+    ];
+
+    console.log(`Spawning combined FFmpeg process for cam ${cameraId}...`);
+    const ffmpegProcess = spawn('ffmpeg', args);
+    state.process = ffmpegProcess;
+
+    // Monitor logs to index complete segments and log errors
     let stderrBuffer = '';
-    recorder.stderr?.on('data', (data) => {
-      stderrBuffer += data.toString();
+    ffmpegProcess.stderr?.on('data', (data) => {
+      const output = data.toString();
+      stderrBuffer += output;
+      
+      // Log errors for debugging
+      if (output.toLowerCase().includes('error')) {
+        console.error(`[FFMPEG CAM-${cameraId} ERROR]`, output.trim());
+      }
+
       const lines = stderrBuffer.split('\n');
       stderrBuffer = lines.pop() || ''; // Keep last partial line
 
       for (const line of lines) {
         // Look for completed segment message: [segment @ 0x...] Opening '...' for writing
-        const match = line.match(/Opening '(.+)' for writing/);
+        const match = line.match(/Opening '(.+\.mp4)' for writing/);
         if (match) {
           const newFile = match[1];
           const oldFile = state!.currentRecordingFile;
@@ -208,49 +222,9 @@ export class FFmpegManager {
       }
     });
 
-    recorder.on('exit', (code, signal) => {
-      console.log(`Recorder process for camera ${cameraId} exited with code ${code}, signal ${signal}`);
-      state!.recorder = null;
-      this.handleProcessCrash(cameraId);
-    });
-
-    // 2. Spawning Live HLS Process
-    const liveDir = path.join(CONFIG.LIVE_PATH, `cam-${cameraId}`);
-    const livePlaylist = path.join(liveDir, 'index.m3u8');
-    const liveSegmentFilename = path.join(liveDir, 'seq_%d.ts');
-
-    const liveArgs = isRtsp
-      ? [
-          '-rtsp_transport', 'tcp',
-          '-i', camera.rtsp_url,
-          '-c', 'copy',
-          '-f', 'hls',
-          '-hls_time', '2',
-          '-hls_list_size', '5',
-          '-hls_flags', 'delete_segments+append_list',
-          '-hls_segment_filename', liveSegmentFilename,
-          livePlaylist
-        ]
-      : [
-          '-re',
-          '-stream_loop', '-1',
-          '-i', camera.rtsp_url,
-          '-c', 'copy',
-          '-f', 'hls',
-          '-hls_time', '2',
-          '-hls_list_size', '5',
-          '-hls_flags', 'delete_segments+append_list',
-          '-hls_segment_filename', liveSegmentFilename,
-          livePlaylist
-        ];
-
-    console.log(`Spawning live HLS stream for cam ${cameraId}: ffmpeg ${liveArgs.join(' ')}`);
-    const live = spawn('ffmpeg', liveArgs);
-    state.live = live;
-
-    live.on('exit', (code, signal) => {
-      console.log(`Live HLS process for camera ${cameraId} exited with code ${code}, signal ${signal}`);
-      state!.live = null;
+    ffmpegProcess.on('exit', (code, signal) => {
+      console.log(`FFmpeg process for camera ${cameraId} exited with code ${code}, signal ${signal}`);
+      state!.process = null;
       this.handleProcessCrash(cameraId);
     });
   }
@@ -306,8 +280,8 @@ export class FFmpegManager {
     const state = this.processes.get(cameraId);
     if (!state) return;
 
-    // If both processes are stopped, we don't recover (it was a stop command)
-    if (state.recorder === null && state.live === null) {
+    // If process is stopped, we don't recover (it was a stop command)
+    if (state.process === null) {
       return;
     }
 
@@ -344,23 +318,14 @@ export class FFmpegManager {
     }
 
     // Clear state triggers to prevent auto-recovery loop
-    const recorder = state.recorder;
-    const live = state.live;
-    state.recorder = null;
-    state.live = null;
+    const ffmpegProcess = state.process;
+    state.process = null;
 
-    if (recorder && !recorder.killed) {
-      recorder.kill('SIGTERM');
+    if (ffmpegProcess && !ffmpegProcess.killed) {
+      ffmpegProcess.kill('SIGTERM');
       // Wait for it to exit, or force kill after 3s
       setTimeout(() => {
-        try { recorder.kill('SIGKILL'); } catch {}
-      }, 3000);
-    }
-
-    if (live && !live.killed) {
-      live.kill('SIGTERM');
-      setTimeout(() => {
-        try { live.kill('SIGKILL'); } catch {}
+        try { ffmpegProcess.kill('SIGKILL'); } catch {}
       }, 3000);
     }
 
@@ -408,14 +373,27 @@ export class FFmpegManager {
    * Status indicators for live dashboard
    */
   public getCameraStatus(cameraId: number): { online: boolean; recording: boolean } {
+    // 1. Check local state (valid for cctv-recorder container)
     const state = this.processes.get(cameraId);
-    if (!state) {
-      return { online: false, recording: false };
+    if (state && state.process) {
+      return { online: true, recording: true };
     }
-    return {
-      online: state.live !== null,
-      recording: state.recorder !== null
-    };
+
+    // 2. Cross-container check via shared filesystem (valid for cctv-backend container)
+    try {
+      const livePlaylist = path.join(CONFIG.LIVE_PATH, `cam-${cameraId}`, 'index.m3u8');
+      if (fs.existsSync(livePlaylist)) {
+        const stat = fs.statSync(livePlaylist);
+        // If playlist was updated in the last 15 seconds, stream is active
+        if (Date.now() - stat.mtimeMs < 15000) {
+          return { online: true, recording: true };
+        }
+      }
+    } catch (err) {
+      // Ignore errors
+    }
+
+    return { online: false, recording: false };
   }
 
   /**
@@ -450,14 +428,9 @@ export class FFmpegManager {
             const exists = await db.get('SELECT id FROM recordings WHERE file_path = ?', filePath);
             if (exists) continue;
 
-            // Check if file is currently being written
-            // If it was modified less than 10 minutes ago, skip it to avoid indexing active file
+            // Since this runs before FFmpeg processes are started at boot,
+            // no file is actively being written, so all files are safe to index.
             const stat = fs.statSync(filePath);
-            const mtimeAge = Date.now() - stat.mtimeMs;
-            if (mtimeAge < 10 * 60 * 1000) {
-              console.log(`Skipping active or recent file during sync: ${file}`);
-              continue;
-            }
 
             if (stat.size === 0) continue;
 

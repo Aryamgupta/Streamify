@@ -63,12 +63,49 @@ export async function initDatabase(dbPath: string): Promise<Database> {
     );
   `);
 
+  // Faces table
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS faces (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      details TEXT,
+      image_path TEXT NOT NULL,
+      embedding BLOB,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // Face detections table
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS face_detections (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      camera_id INTEGER NOT NULL,
+      face_id INTEGER,
+      confidence REAL NOT NULL,
+      snapshot_path TEXT NOT NULL,
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (camera_id) REFERENCES cameras(id) ON DELETE CASCADE,
+      FOREIGN KEY (face_id) REFERENCES faces(id) ON DELETE SET NULL
+    );
+  `);
+
+  // People count logs table
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS people_count_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      camera_id INTEGER NOT NULL,
+      count INTEGER NOT NULL,
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (camera_id) REFERENCES cameras(id) ON DELETE CASCADE
+    );
+  `);
+
   // Seed default admin user if no users exist
   const userCount = await db.get<{ count: number }>('SELECT COUNT(*) as count FROM users');
   if (userCount && userCount.count === 0) {
     const passwordHash = await bcrypt.hash('admin123', 10);
     await db.run(
-      'INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)',
+      'INSERT OR IGNORE INTO users (username, password_hash, role) VALUES (?, ?, ?)',
       'admin',
       passwordHash,
       'admin'
@@ -79,11 +116,11 @@ export async function initDatabase(dbPath: string): Promise<Database> {
   // Seed default settings if empty
   const settingsCount = await db.get<{ count: number }>('SELECT COUNT(*) as count FROM settings');
   if (settingsCount && settingsCount.count === 0) {
-    await db.run("INSERT INTO settings (key, value) VALUES ('segment_duration', '300')");
-    await db.run("INSERT INTO settings (key, value) VALUES ('retention_period', '7')");
+    await db.run("INSERT OR IGNORE INTO settings (key, value) VALUES ('segment_duration', '300')");
+    await db.run("INSERT OR IGNORE INTO settings (key, value) VALUES ('retention_period', '7')");
     // Default storage path is in workspace/recordings
     const defaultStoragePath = path.resolve(__dirname, '../../../recordings');
-    await db.run("INSERT INTO settings (key, value) VALUES ('storage_path', ?)", defaultStoragePath);
+    await db.run("INSERT OR IGNORE INTO settings (key, value) VALUES ('storage_path', ?)", defaultStoragePath);
     console.log('Seeded default system settings');
   }
 

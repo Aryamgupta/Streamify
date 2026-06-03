@@ -90,10 +90,7 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
 
     const cameraId = result.lastID!;
 
-    // Start background processes if enabled
-    if (enabled === 1) {
-      await ffmpegManager.startCamera(cameraId);
-    }
+    // The recorder daemon will automatically pick up this new camera and start it
 
     res.status(201).json({
       id: cameraId,
@@ -147,16 +144,8 @@ router.put('/:id', async (req: AuthenticatedRequest, res: Response) => {
       cameraId
     );
 
-    // Dynamic process control
-    if (enabled === 1) {
-      // If URL changed or it was disabled before, start/restart it
-      if (existing.enabled === 0 || existing.rtsp_url !== rtsp_url) {
-        await ffmpegManager.startCamera(cameraId);
-      }
-    } else {
-      // Stop processes if disabled
-      await ffmpegManager.stopCamera(cameraId);
-    }
+    // Dynamic process control is handled by the recorder daemon syncing with the database
+
 
     res.json({
       id: cameraId,
@@ -183,10 +172,7 @@ router.delete('/:id', async (req: AuthenticatedRequest, res: Response) => {
       return res.status(404).json({ error: 'Camera not found' });
     }
 
-    // 1. Stop background processes
-    await ffmpegManager.stopCamera(cameraId);
-
-    // 2. Delete from DB (recordings will cascade-delete if schema set up, let's also delete files)
+    // 1. Delete from DB (recordings will cascade-delete if schema set up, let's also delete files)
     const recordings = await db.all<{ file_path: string }[]>('SELECT file_path FROM recordings WHERE camera_id = ?', cameraId);
     for (const rec of recordings) {
       try {

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutGrid, Film, Camera, Settings, LogOut, ShieldAlert, Users } from 'lucide-react';
+import { LayoutGrid, Film, Camera, Settings, LogOut, ShieldAlert, Users, Activity } from 'lucide-react';
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -46,6 +46,7 @@ export default function Navigation() {
     { name: 'Recordings', href: '/recordings', icon: Film },
     { name: 'Cameras', href: '/cameras', icon: Camera },
     { name: 'Face Directory', href: '/faces', icon: Users },
+    { name: 'Activity Logs', href: '/logs', icon: Activity },
     { name: 'Settings & Users', href: '/settings', icon: Settings }
   ];
 

@@ -133,15 +133,10 @@ router.put('/settings', requireRole(['admin']), async (req: AuthenticatedRequest
 
     console.log(`System settings updated. Duration: ${segment_duration}s, Retention: ${retention_period} days, Path: ${storage_path}`);
 
-    // If critical recording settings changed, restart all active camera recorders
+    // If critical recording settings changed, the recorder daemon needs to be restarted
+    // For now we just log it. In a production environment with Docker, restarting the cctv-recorder container applies these.
     if (pathChanged || durationChanged) {
-      console.log('Recording parameters changed. Restarting all enabled cameras...');
-      await ffmpegManager.stopAll();
-      
-      // Small timeout to allow processes to close
-      setTimeout(async () => {
-        await ffmpegManager.startAllEnabledCameras();
-      }, 2000);
+      console.log('Recording parameters changed in database. Recorder daemon should be restarted to apply changes.');
     }
 
     res.json({ message: 'Settings saved successfully. Services updated.' });

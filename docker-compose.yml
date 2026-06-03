@@ -37,7 +37,7 @@ services:
     command: ["node", "dist/recorder.js"]
     volumes:
       - cctv-data:/app/data
-      - cctv-recordings:/app/recordings
+      - ./recordings:/app/recordings
       - cctv-live:/app/live
       # OPTIMIZATION FOR LINUX / RASPBERRY PI:
       # Match the backend mapping to share the live RAM disk segments:
@@ -75,10 +75,10 @@ services:
     restart: unless-stopped
     volumes:
       - cctv-data:/app/data
-      - cctv-recordings:/app/recordings
+      - ./recordings:/app/recordings
     environment:
       - DB_PATH=/app/data/cctv.db
-      - SNAPSHOTS_PATH=/app/recordings/snapshots
+      - SNAPSHOTS_PATH=./recordings/snapshots
       - BACKEND_URL=http://backend:5000
       - DETECT_INTERVAL=1.0
       - FACE_MATCH_THRESHOLD=0.6

@@ -44,7 +44,7 @@ if (!fs.existsSync(uploadsDir)) {
 app.use('/uploads/faces', authenticateJWT, express.static(uploadsDir));
 
 // Serve AI event snapshots
-const recordingsPath = process.env.RECORDINGS_PATH || path.resolve(__dirname, '../../recordings');
+const recordingsPath = process.env.RECORDINGS_PATH || path.resolve(process.cwd(), 'recordings');
 const snapshotsDir = path.join(recordingsPath, 'snapshots');
 if (!fs.existsSync(snapshotsDir)) {
   fs.mkdirSync(snapshotsDir, { recursive: true });
