@@ -26,6 +26,7 @@ services:
       - MOCK_MODE=false
       - DOCKER_MODE=true
       - JWT_SECRET=cctv-nvr-super-secret-key-change-this-in-production
+      - AI_API_KEY=streamify-ai-secret-key-change-this
 
   recorder:
     build:
@@ -63,6 +64,25 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
+    depends_on:
+      - backend
+
+  ai:
+    build:
+      context: ./ai
+      dockerfile: Dockerfile
+    container_name: cctv-ai
+    restart: unless-stopped
+    volumes:
+      - cctv-data:/app/data
+      - cctv-recordings:/app/recordings
+    environment:
+      - DB_PATH=/app/data/cctv.db
+      - SNAPSHOTS_PATH=/app/recordings/snapshots
+      - BACKEND_URL=http://backend:5000
+      - DETECT_INTERVAL=1.0
+      - FACE_MATCH_THRESHOLD=0.6
+      - AI_API_KEY=streamify-ai-secret-key-change-this
     depends_on:
       - backend
 

@@ -9,8 +9,11 @@ import usersRouter from './routes/users';
 import camerasRouter from './routes/cameras';
 import recordingsRouter from './routes/recordings';
 import systemRouter from './routes/system';
+import facesRouter from './routes/faces';
+import detectionsRouter from './routes/detections';
 import { FFmpegManager } from './services/ffmpeg-manager';
 import { StorageManager } from './services/storage-manager';
+import fs from 'fs';
 
 const app = express();
 const ffmpegManager = FFmpegManager.getInstance();
@@ -26,9 +29,27 @@ app.use('/api/users', usersRouter);
 app.use('/api/cameras', camerasRouter);
 app.use('/api/recordings', recordingsRouter);
 app.use('/api/system', systemRouter);
+app.use('/api/faces', facesRouter);
+app.use('/api/detections', detectionsRouter);
 
 // Protected static serving of live HLS video streams (playlists and chunks)
 app.use('/live', authenticateJWT, express.static(CONFIG.LIVE_PATH));
+
+// Serve face registration reference uploads
+const dbDir = path.dirname(CONFIG.DB_PATH);
+const uploadsDir = path.join(dbDir, 'uploads', 'faces');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+app.use('/uploads/faces', authenticateJWT, express.static(uploadsDir));
+
+// Serve AI event snapshots
+const recordingsPath = process.env.RECORDINGS_PATH || path.resolve(__dirname, '../../recordings');
+const snapshotsDir = path.join(recordingsPath, 'snapshots');
+if (!fs.existsSync(snapshotsDir)) {
+  fs.mkdirSync(snapshotsDir, { recursive: true });
+}
+app.use('/snapshots', authenticateJWT, express.static(snapshotsDir));
 
 // Main startup function
 async function bootstrap() {

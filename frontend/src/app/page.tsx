@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import LivePlayer from '../components/LivePlayer';
 import { getApiUrl, getAuthHeaders } from '../utils/api';
-import { Database, Activity, HardDrive, AlertOctagon, HelpCircle } from 'lucide-react';
+import { Database, Activity, HardDrive, AlertOctagon, HelpCircle, Users, Bell, TrendingUp, X } from 'lucide-react';
 import Link from 'next/link';
 
 interface Camera {
@@ -38,11 +38,20 @@ interface SystemStatus {
   };
 }
 
+interface PeopleStat {
+  camera_id: number;
+  camera_name: string;
+  count: number;
+  timestamp: string;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [storage, setStorage] = useState<StorageStats | null>(null);
   const [system, setSystem] = useState<SystemStatus | null>(null);
+  const [peopleStats, setPeopleStats] = useState<PeopleStat[]>([]);
+  const [alerts, setAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,6 +88,13 @@ export default function DashboardPage() {
         setSystem(systemData);
       }
 
+      // 4. Fetch People Counting Stats
+      const peopleRes = await fetch(getApiUrl('/api/detections/analytics/people-count'), { headers });
+      if (peopleRes.ok) {
+        const peopleData = await peopleRes.json();
+        setPeopleStats(peopleData);
+      }
+
       setError(null);
     } catch (err: any) {
       console.error(err);
@@ -94,6 +110,49 @@ export default function DashboardPage() {
     const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  // Set up Server-Sent Events for real-time notifications
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const sseUrl = getApiUrl(`/api/detections/alerts?token=${token}`);
+    const eventSource = new EventSource(sseUrl);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload.type === 'face_detection') {
+          const newAlert = payload.data;
+          setAlerts((prev) => [newAlert, ...prev.slice(0, 2)]);
+        }
+      } catch (err) {
+        console.error('Error parsing SSE event:', err);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.error('SSE Connection failed. Re-connecting...', err);
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, []);
+
+  // Auto-dismiss alerts
+  useEffect(() => {
+    if (alerts.length > 0) {
+      const timer = setTimeout(() => {
+        setAlerts((prev) => prev.slice(0, -1));
+      }, 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [alerts]);
+
+  const dismissAlert = (id: number) => {
+    setAlerts((prev) => prev.filter((a) => a.id !== id));
+  };
 
   const formatSize = (bytes: number) => {
     const gb = bytes / (1024 * 1024 * 1024);
@@ -199,6 +258,73 @@ export default function DashboardPage() {
         })}
       </div>
 
+      {/* AI Stream Insights / Analytics Area */}
+      <div className="grid grid-cols-1 gap-5">
+        <div className="bg-slate-900/30 border border-slate-850 p-6 rounded-2xl shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="space-y-1 md:max-w-md">
+            <h3 className="text-sm font-bold text-slate-100 uppercase tracking-tight flex items-center space-x-2">
+              <TrendingUp className="w-4.5 h-4.5 text-emerald-400" />
+              <span>AI Stream Insights (People Density)</span>
+            </h3>
+            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Human presence metrics timeline (last 24 hours)</p>
+            <p className="text-xs text-slate-400 leading-relaxed mt-2">
+              Aggregated real-time detection logs analyzing spatial density across configured camera feeds to count human objects.
+            </p>
+          </div>
+
+          <div className="flex-grow w-full max-w-xl h-24 bg-slate-950/40 rounded-xl p-3 border border-slate-850 flex items-center justify-center relative overflow-hidden">
+            {peopleStats.length > 0 ? (() => {
+              const chartData = peopleStats.slice(-15);
+              const maxCount = Math.max(...chartData.map(d => d.count), 1);
+              const width = 500;
+              const height = 80;
+              
+              const points = chartData.map((d, i) => {
+                const x = (i / Math.max(chartData.length - 1, 1)) * width;
+                const y = height - (d.count / maxCount) * (height - 16) - 8;
+                return `${x},${y}`;
+              }).join(' ');
+
+              let areaPoints = '';
+              if (chartData.length > 0) {
+                const firstX = 0;
+                const firstY = height - (chartData[0].count / maxCount) * (height - 16) - 8;
+                areaPoints = `0,${height} ${firstX},${firstY} `;
+                chartData.forEach((d, i) => {
+                  const x = (i / Math.max(chartData.length - 1, 1)) * width;
+                  const y = height - (d.count / maxCount) * (height - 16) - 8;
+                  areaPoints += `${x},${y} `;
+                });
+                areaPoints += `${width},${height}`;
+              }
+
+              return (
+                <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity="0.25"/>
+                      <stop offset="100%" stopColor="#10b981" stopOpacity="0.00"/>
+                    </linearGradient>
+                  </defs>
+                  <polyline
+                    fill="none"
+                    stroke="#10b981"
+                    strokeWidth="2"
+                    points={points}
+                  />
+                  <polygon
+                    fill="url(#chartGrad)"
+                    points={areaPoints}
+                  />
+                </svg>
+              );
+            })() : (
+              <span className="text-slate-600 text-xs font-semibold">No telemetry logged in the last 24h</span>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Bottom Metrics Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Storage card */}
@@ -252,6 +378,53 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Floating Notification Alerts (SSE-driven) */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 max-w-sm w-full">
+        {alerts.map((alert) => {
+          const token = localStorage.getItem('token');
+          const isUnknown = !alert.face_id;
+          const imageUrl = getApiUrl(`/snapshots/${alert.snapshot_path}?token=${token}`);
+
+          return (
+            <div
+              key={alert.id}
+              className={`flex items-start space-x-3.5 p-4 rounded-2xl border bg-slate-955/95 backdrop-blur-md shadow-2xl transition-all duration-300 animate-slide-in ${
+                isUnknown
+                  ? 'border-rose-500/30 shadow-rose-500/5'
+                  : 'border-emerald-500/30 shadow-emerald-500/5'
+              }`}
+            >
+              <div className="w-12 h-12 rounded-xl overflow-hidden bg-black border border-slate-800 flex-shrink-0">
+                <img src={imageUrl} alt="Detection" className="w-full h-full object-cover" />
+              </div>
+
+              <div className="flex-grow min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500 flex items-center space-x-1">
+                    <Bell className={`w-3 h-3 ${isUnknown ? 'text-rose-400' : 'text-emerald-400'}`} />
+                    <span>Real-time Alert</span>
+                  </span>
+                  <button
+                    onClick={() => dismissAlert(alert.id)}
+                    className="text-slate-500 hover:text-slate-300 transition-colors p-0.5 rounded-md"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <h4 className={`text-xs font-bold uppercase tracking-wide mt-1 ${isUnknown ? 'text-rose-400 animate-pulse' : 'text-emerald-400'}`}>
+                  {isUnknown ? 'Unrecognized Person' : `${alert.person_name} Detected`}
+                </h4>
+                
+                <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">
+                  Located at <span className="font-bold text-slate-300">{alert.camera_name}</span> with {Math.round(alert.confidence * 100)}% accuracy.
+                </p>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
