@@ -5,8 +5,8 @@ After=network.target cctv-backend.service
 [Service]
 Type=simple
 User=aryam
-WorkingDirectory=/home/aryam/Documents/cctv-analysis/frontend
-ExecStart=/usr/bin/npm run start
+WorkingDirectory=/home/aryam/Streamify/frontend
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start
 Restart=on-failure
 RestartSec=10
 

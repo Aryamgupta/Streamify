@@ -17,11 +17,17 @@ WORKSPACE_DIR=$(cd "$(dirname "$0")/.." && pwd)
 BACKEND_DIR="$WORKSPACE_DIR/backend"
 FRONTEND_DIR="$WORKSPACE_DIR/frontend"
 
+# Dynamically resolve Node & NPM paths for the non-root user
+NODE_PATH=$(sudo -u "$REAL_USER" which node || echo "/usr/bin/node")
+NPM_PATH=$(sudo -u "$REAL_USER" which npm || echo "/usr/bin/npm")
+
 echo "=================================================="
 echo " Installing Streamify NVR Systemd Services        "
 echo "=================================================="
 echo "Workspace Dir: $WORKSPACE_DIR"
 echo "Running User : $REAL_USER"
+echo "Node Path    : $NODE_PATH"
+echo "NPM Path     : $NPM_PATH"
 echo "=================================================="
 
 # Temporary path for parsed templates
@@ -32,15 +38,18 @@ TEMP_FRONTEND="/tmp/cctv-frontend.service"
 # Create customized service files from templates
 echo "Customizing systemd service configs..."
 sed -e "s|User=aryam|User=$REAL_USER|g" \
-    -e "s|WorkingDirectory=/home/aryam/Documents/cctv-analysis/backend|WorkingDirectory=$BACKEND_DIR|g" \
+    -e "s|WorkingDirectory=/home/aryam/Streamify/backend|WorkingDirectory=$BACKEND_DIR|g" \
+    -e "s|/usr/bin/node|$NODE_PATH|g" \
     "$WORKSPACE_DIR/scripts/cctv-backend.service" > "$TEMP_BACKEND"
 
 sed -e "s|User=aryam|User=$REAL_USER|g" \
-    -e "s|WorkingDirectory=/home/aryam/Documents/cctv-analysis/backend|WorkingDirectory=$BACKEND_DIR|g" \
+    -e "s|WorkingDirectory=/home/aryam/Streamify/backend|WorkingDirectory=$BACKEND_DIR|g" \
+    -e "s|/usr/bin/node|$NODE_PATH|g" \
     "$WORKSPACE_DIR/scripts/cctv-recorder.service" > "$TEMP_RECORDER"
 
 sed -e "s|User=aryam|User=$REAL_USER|g" \
-    -e "s|WorkingDirectory=/home/aryam/Documents/cctv-analysis/frontend|WorkingDirectory=$FRONTEND_DIR|g" \
+    -e "s|WorkingDirectory=/home/aryam/Streamify/frontend|WorkingDirectory=$FRONTEND_DIR|g" \
+    -e "s|/usr/bin/node|$NODE_PATH|g" \
     "$WORKSPACE_DIR/scripts/cctv-frontend.service" > "$TEMP_FRONTEND"
 
 # Copy to systemd directory

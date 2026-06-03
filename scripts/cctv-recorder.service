@@ -5,7 +5,7 @@ After=network.target cctv-backend.service
 [Service]
 Type=simple
 User=aryam
-WorkingDirectory=/home/aryam/Documents/cctv-analysis/backend
+WorkingDirectory=/home/aryam/Streamify/backend
 Environment=NODE_ENV=production
 ExecStart=/usr/bin/node dist/recorder.js
 Restart=on-failure
