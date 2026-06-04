@@ -55,12 +55,10 @@ export default function Navigation() {
       <div className="flex h-16 items-center justify-between px-6 max-w-7xl mx-auto">
         {/* Brand logo */}
         <div className="flex items-center space-x-2.5">
-          <div className="bg-gradient-to-tr from-emerald-500 to-teal-400 p-2 rounded-lg text-slate-950 shadow-md shadow-emerald-500/10">
-            <Camera className="w-5 h-5" />
-          </div>
+          <img src="/icon.png" alt="Streamify Logo" className="w-9 h-9 rounded-lg" />
           <div>
             <h1 className="font-bold text-slate-100 text-sm tracking-wide uppercase leading-none">Streamify</h1>
-            <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-widest leading-none">NVR NVR</span>
+            <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-widest leading-none">AI CCTV NVR</span>
           </div>
         </div>
 
