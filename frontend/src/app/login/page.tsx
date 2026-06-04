@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Camera, Lock, User, AlertCircle } from 'lucide-react';
+import { Lock, User, AlertCircle } from 'lucide-react';
 import { getApiUrl } from '../../utils/api';
 
 export default function LoginPage() {
@@ -57,9 +57,7 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md space-y-8 z-10">
         <div className="flex flex-col items-center">
-          <div className="bg-gradient-to-tr from-emerald-500 to-teal-400 p-3 rounded-xl text-slate-950 shadow-lg shadow-emerald-500/10 mb-4 animate-pulse">
-            <Camera className="w-8 h-8" />
-          </div>
+          <img src="/icon.png" alt="Streamify Logo" className="w-16 h-16 rounded-2xl mb-4 shadow-lg shadow-emerald-500/20" />
           <h2 className="text-3xl font-extrabold tracking-tight text-white uppercase sm:text-4xl">
             Streamify
           </h2>
