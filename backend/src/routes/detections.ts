@@ -150,6 +150,37 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
+// GET /api/detections/people-count-logs - Paginated people count event logs
+router.get('/people-count-logs', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const db = getDb();
+    const limit = parseInt(req.query.limit as string, 10) || 50;
+    const offset = parseInt(req.query.offset as string, 10) || 0;
+
+    const logs = await db.all(`
+      SELECT pcl.id, pcl.camera_id, c.name as camera_name, pcl.count, pcl.timestamp
+      FROM people_count_logs pcl
+      JOIN cameras c ON pcl.camera_id = c.id
+      ORDER BY pcl.timestamp DESC
+      LIMIT ? OFFSET ?
+    `, limit, offset);
+
+    const totalRows = await db.get<{ count: number }>('SELECT COUNT(*) as count FROM people_count_logs');
+
+    res.json({
+      data: logs,
+      pagination: {
+        limit,
+        offset,
+        total: totalRows ? totalRows.count : 0
+      }
+    });
+  } catch (err) {
+    console.error('Fetch people count logs error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // GET /api/detections/analytics/people-count - Fetch people counts over last 24h for charts
 router.get('/analytics/people-count', async (req: AuthenticatedRequest, res: Response) => {
   try {

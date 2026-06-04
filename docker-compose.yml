@@ -11,7 +11,8 @@ services:
       - "5000:5000"
     volumes:
       - cctv-data:/app/data
-      - cctv-recordings:/app/recordings
+      - ./recordings:/app/recordings
+      - ./mock-media:/app/mock-media
       # Default to Docker named volume for HLS live streams
       - cctv-live:/app/live
       # OPTIMIZATION FOR LINUX / RASPBERRY PI:
@@ -38,6 +39,7 @@ services:
     volumes:
       - cctv-data:/app/data
       - ./recordings:/app/recordings
+      - ./mock-media:/app/mock-media
       - cctv-live:/app/live
       # OPTIMIZATION FOR LINUX / RASPBERRY PI:
       # Match the backend mapping to share the live RAM disk segments:
@@ -76,6 +78,7 @@ services:
     volumes:
       - cctv-data:/app/data
       - ./recordings:/app/recordings
+      - ./mock-media:/app/mock-media
     environment:
       - DB_PATH=/app/data/cctv.db
       - SNAPSHOTS_PATH=./recordings/snapshots
