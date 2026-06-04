@@ -2,15 +2,16 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { Play, RotateCcw, AlertTriangle } from 'lucide-react';
+import {  RotateCcw, AlertTriangle, Users } from 'lucide-react';
 
 interface LivePlayerProps {
   streamUrl: string; // URL to the index.m3u8 file
   cameraName: string;
   isOnline: boolean;
+  peopleCount?: number;
 }
 
-export default function LivePlayer({ streamUrl, cameraName, isOnline }: LivePlayerProps) {
+export default function LivePlayer({ streamUrl, cameraName, isOnline, peopleCount }: LivePlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -143,6 +144,14 @@ export default function LivePlayer({ streamUrl, cameraName, isOnline }: LivePlay
           {isOnline && !error ? 'Live' : 'Offline'}
         </span>
       </div>
+
+      {/* Overlay - Live People Count */}
+      {peopleCount !== undefined && (
+        <div className="absolute bottom-3 right-3 flex items-center space-x-1.5 bg-blue-500/80 backdrop-blur px-2.5 py-1.5 rounded-md text-xs font-medium border border-blue-500/50 pointer-events-none text-white shadow-lg">
+          <Users className="w-3.5 h-3.5" />
+          <span className="font-bold">{peopleCount}</span>
+        </div>
+      )}
 
       {/* Loader */}
       {loading && (

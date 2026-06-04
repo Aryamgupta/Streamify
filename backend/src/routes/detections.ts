@@ -68,6 +68,12 @@ router.post('/alert', async (req, res) => {
         camera_id,
         people_count
       );
+      
+      // Broadcast real-time people count update
+      broadcastDetectionAlert({
+        type: 'people_count',
+        data: { camera_id, count: people_count }
+      });
     }
 
     // 2. Log face detection if present (face_id can be null for unknown/unrecognized)

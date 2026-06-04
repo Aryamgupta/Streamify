@@ -52,6 +52,7 @@ export default function DashboardPage() {
   const [system, setSystem] = useState<SystemStatus | null>(null);
   const [peopleStats, setPeopleStats] = useState<PeopleStat[]>([]);
   const [alerts, setAlerts] = useState<any[]>([]);
+  const [livePeopleCounts, setLivePeopleCounts] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -125,6 +126,11 @@ export default function DashboardPage() {
         if (payload.type === 'face_detection') {
           const newAlert = payload.data;
           setAlerts((prev) => [newAlert, ...prev.slice(0, 2)]);
+        } else if (payload.type === 'people_count') {
+          setLivePeopleCounts((prev) => ({
+            ...prev,
+            [payload.data.camera_id]: payload.data.count
+          }));
         }
       } catch (err) {
         console.error('Error parsing SSE event:', err);
@@ -210,6 +216,7 @@ export default function DashboardPage() {
                     streamUrl={hlsUrl}
                     cameraName={camera.name}
                     isOnline={isCamOnline}
+                    peopleCount={livePeopleCounts[camera.id]}
                   />
                 </div>
                 
